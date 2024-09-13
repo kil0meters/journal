@@ -1,37 +1,47 @@
-import { Tabs } from 'expo-router';
-import React from 'react';
+import SlideUpEditor from "@/components/SlideUpEditor";
+import { Stack } from "expo-router";
+import React from "react";
+import { Button, Text, View, StyleSheet, Platform } from "react-native";
 
-import { TabBarIcon } from '@/components/navigation/TabBarIcon';
-import { Colors } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/useColorScheme';
-
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
+export default function Layout() {
   return (
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        headerShown: false,
-      }}>
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Home',
-          tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon name={focused ? 'home' : 'home-outline'} color={color} />
+    <View style={styles.container}>
+      <Stack
+        screenOptions={{
+          // headerRight: () => <Text style={{ color: "#fff" }}>right</Text>,
+          headerTitle: (props) => (
+            <View style={{ flex: 1, flexDirection: "row" }}>
+              <Text
+                style={{
+                  color: "white",
+                  fontWeight: "condensedBold",
+                  fontFamily: "Georgia",
+                  fontSize: 24,
+                }}
+              >
+                Journal
+              </Text>
+
+              <View style={{ marginLeft: "auto" }}>
+                <Button title="photos" />
+              </View>
+            </View>
           ),
+          headerTitleAlign: "left",
+          headerStyle: {
+            backgroundColor: "#000",
+          },
+          headerTintColor: "#fff",
         }}
-      />
-      <Tabs.Screen
-        name="explore"
-        options={{
-          title: 'Explore',
-          tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon name={focused ? 'code-slash' : 'code-slash-outline'} color={color} />
-          ),
-        }}
-      />
-    </Tabs>
+      >
+        <Stack.Screen name="index" options={{}} />
+      </Stack>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+});

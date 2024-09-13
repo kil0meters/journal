@@ -1,11 +1,12 @@
 import { MoodSelector } from "@/components/MoodSelector";
+import SlideUpEditor from "@/components/SlideUpEditor";
 import { useCallback, useState } from "react";
 import {
   Dimensions,
+  Platform,
   RefreshControl,
   ScrollView,
   View,
-  Text,
 } from "react-native";
 
 export default function Home() {
@@ -20,36 +21,17 @@ export default function Home() {
 
   return (
     <View style={{ height: Dimensions.get("window").height }}>
-      <View
-        style={{
-          position: "absolute",
-          backgroundColor: "black",
-          width: Dimensions.get("window").width,
-          height: 60,
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Text
-          style={{
-            color: "black",
-          }}
-        >
-          test text
-        </Text>
-      </View>
-
       <ScrollView style={{ backgroundColor: "#fff" }}>
         <RefreshControl
           refreshing={refreshing}
           onRefresh={onRefresh}
-          tintColor="transparent"
-          colors={["transparent"]}
-          style={{ backgroundColor: "transparent" }}
           // progressViewOffset={2}
+          progressBackgroundColor="#ff0000"
         />
         <MoodSelector />
       </ScrollView>
+
+      {(Platform.OS == "ios" || Platform.OS === "android") && <SlideUpEditor />}
     </View>
   );
 }
