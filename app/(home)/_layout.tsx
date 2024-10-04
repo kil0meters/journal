@@ -35,6 +35,7 @@ export default function Layout() {
         }}
       >
         <Stack.Screen name="index" options={{}} />
+        <Stack.Screen name="mood_photo_view" options={{}} />
       </Stack>
     </View>
   );
@@ -42,6 +43,7 @@ export default function Layout() {
 
 const styles = StyleSheet.create({
   container: {
+    backgroundColor: "#000",
     flex: 1,
   },
 });

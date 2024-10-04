@@ -39,7 +39,7 @@ export default function SlideUpEditor() {
       backgroundStyle={{
         backgroundColor: "#EDBF92",
       }}
-      snapPoints={["10%", "90%"]}
+      snapPoints={["10%", "100%"]}
       ref={bottomSheetRef}
       onAnimate={(from, to) => {
         if (to === 0) editor.blur();
