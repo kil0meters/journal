@@ -18,3 +18,8 @@ web-build/
 
 expo-env.d.ts
 # @end expo-cli
+
+server/target/*
+server/outputs/*
+server/test_images/*
+database.sqlite
