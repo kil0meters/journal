@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import ImageCarousel from "./ImageCarousel";
 import { useStore } from "@/app/store";
+import { Entry } from "@/app/utils/types";
 
 export function bgColorFromDate(date: string): string {
   let dateString = new Date(date).toLocaleString("en-US", {
@@ -58,7 +59,6 @@ function EntryPreview(entry: { date: string; post_text: string }) {
     <TouchableOpacity
       onPress={() => {
         setEditingDate(entry.date);
-        queryClient.invalidateQueries({ queryKey: ["active-post"] });
       }}
       activeOpacity={1}
     >
@@ -104,14 +104,7 @@ function EntryPreview(entry: { date: string; post_text: string }) {
 }
 
 export default function Entries() {
-  const { data, isLoading, isError, error } = useQuery<
-    [
-      {
-        post_text: string;
-        date: string;
-      },
-    ]
-  >({
+  const { data, isLoading, isError, error } = useQuery<Entry[]>({
     queryKey: ["posts"],
     queryFn: async () => {
       const response = await fetch("http://localhost:3000/get-entries");

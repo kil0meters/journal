@@ -1,16 +1,18 @@
 use anyhow::Context;
-
+use auth::validate_jwt;
 use axum::{
+    extract::{Multipart, Path, State},
     http::StatusCode,
     routing::{get, post},
     Extension, Json, Router,
 };
 use serde::{Deserialize, Serialize};
 use sqlx::{sqlite::SqlitePoolOptions, SqlitePool};
+use tokio::{fs::File, io::AsyncWriteExt};
+use tower_http::trace::TraceLayer;
 use tracing::Level;
 
-// mod jpeg;
-// mod process_image;
+mod auth;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -18,19 +20,8 @@ async fn main() -> anyhow::Result<()> {
 
     // initialize tracing
     tracing_subscriber::fmt()
-        .with_max_level(Level::TRACE)
+        .with_max_level(Level::DEBUG)
         .finish();
-
-    // let endpoint_url = format!("https://{}.r2.cloudflarestorage.com", config.account_id);
-    // let credentials =
-    //     Credentials::new(config.access_id, config.access_secret, None, None, "custom");
-    // let r2_config = aws_config::from_env()
-    //     .region(Region::new(config.region))
-    //     .credentials_provider(SharedCredentialsProvider::new(credentials))
-    //     .endpoint_url(&endpoint_url)
-    //     .load()
-    //     .await;
-    // let client = aws_sdk_s3::Client::new(&r2_config);
 
     let db = SqlitePoolOptions::new()
         .connect("./database.sqlite")
@@ -39,9 +30,18 @@ async fn main() -> anyhow::Result<()> {
 
     sqlx::migrate!().run(&db).await?;
 
-    let app = Router::new()
+    let secure_routes = Router::new()
         .route("/save-entry", post(save_entry))
         .route("/get-entries", get(get_entries))
+        .route("/upload_images/:entry_id", post(upload_images))
+        .layer(axum::middleware::from_fn(validate_jwt));
+
+    let routes = Router::new().route("/auth", post(auth::create_or_verify_account));
+
+    let app = Router::new()
+        .merge(routes)
+        .merge(secure_routes)
+        .layer(TraceLayer::new_for_http())
         .layer(Extension(db));
 
     tracing::info!("Listening on 0.0.0.0:3000");
@@ -73,6 +73,57 @@ async fn save_entry(
         Ok(_) => StatusCode::OK,
         Err(_) => StatusCode::INTERNAL_SERVER_ERROR,
     }
+}
+#[derive(Deserialize)]
+struct Account {
+    username: String,
+    password: String,
+}
+
+async fn upload_images(
+    Path(entry_id): Path<i64>,
+    Extension(db): Extension<SqlitePool>,
+    mut multipart: Multipart,
+) -> Result<StatusCode, StatusCode> {
+    while let Some(field) = multipart
+        .next_field()
+        .await
+        .map_err(|_| StatusCode::BAD_REQUEST)?
+    {
+        let file_name = field.file_name().unwrap_or("image").to_string();
+        let content_type = field.content_type().unwrap_or("application/octet-stream");
+
+        if content_type.starts_with("image/") {
+            let data = field
+                .bytes()
+                .await
+                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+            // Save the file locally
+            let path = format!("./uploads/{}", file_name);
+            let mut file = File::create(&path)
+                .await
+                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+            file.write_all(&data)
+                .await
+                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+            sqlx::query!(
+                "INSERT INTO images (entry_id, source)
+                 SELECT ?, ?
+                 WHERE NOT EXISTS (SELECT 1 FROM images WHERE source = ?)",
+                entry_id,
+                path,
+                path
+            )
+            .execute(&db)
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        }
+    }
+
+    Ok(StatusCode::OK)
 }
 
 async fn get_entries(
