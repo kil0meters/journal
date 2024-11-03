@@ -1,36 +1,45 @@
-import SlideUpEditor from "@/components/SlideUpEditor";
-import { Stack } from "expo-router";
+import { useStore } from "@/app/store";
+import { Stack, useRouter } from "expo-router";
 import React from "react";
 import { Button, Text, View, StyleSheet, Platform } from "react-native";
 
 export default function Layout() {
+  const loggedIn = useStore((s) => s.loggedIn);
+  const router = useRouter();
+
   return (
     <View style={styles.container}>
       <Stack
         screenOptions={{
-          // headerRight: () => <Text style={{ color: "#fff" }}>right</Text>,
           headerTitle: (props) => (
             <View style={{ flex: 1, flexDirection: "row" }}>
               <Text
                 style={{
-                  color: "white",
+                  color: props.tintColor,
                   fontWeight: "condensedBold",
-                  fontFamily: "Georgia",
+                  fontFamily: "Helvetica Neue",
                   fontSize: 24,
                 }}
               >
-                Journal
+                {props.children}
               </Text>
             </View>
           ),
+          headerBackTitleVisible: false,
           headerTitleAlign: "left",
+          headerTitleStyle: {},
           headerStyle: {
-            backgroundColor: "#000",
+            backgroundColor: "white",
+          },
+          contentStyle: {
+            borderColor: "#000",
+            borderTopWidth: 4,
           },
           headerTintColor: "#fff",
         }}
       >
         <Stack.Screen name="index" options={{}} />
+        <Stack.Screen name="main" options={{}} />
         <Stack.Screen name="mood_photo_view" options={{}} />
       </Stack>
     </View>
@@ -39,7 +48,7 @@ export default function Layout() {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#000",
+    backgroundColor: "white",
     flex: 1,
   },
 });

@@ -1,44 +1,64 @@
-import SlideUpEditor from "@/components/SlideUpEditor";
-import { Stack } from "expo-router";
-import React from "react";
-import { Button, Text, View, StyleSheet, Platform } from "react-native";
+import { IconSymbol } from "@/components/IconSymbol";
+import { Tabs } from "expo-router";
+import { Platform } from "react-native";
 
-export default function Layout() {
+export default function TabLayout() {
   return (
-    <View style={styles.container}>
-      <Stack
-        screenOptions={{
-          // headerRight: () => <Text style={{ color: "#fff" }}>right</Text>,
-          headerTitle: (props) => (
-            <View style={{ flex: 1, flexDirection: "row" }}>
-              <Text
-                style={{
-                  color: "white",
-                  fontWeight: "condensedBold",
-                  fontFamily: "Georgia",
-                  fontSize: 24,
-                }}
-              >
-                Journal
-              </Text>
-            </View>
+    <Tabs
+      screenOptions={{
+        tabBarActiveTintColor: "black",
+        // tabBarActiveTintColor: Colors[colorScheme ?? "light"].tint,
+        headerShown: false,
+        tabBarStyle: {
+          borderTopWidth: 4,
+          paddingTop: 8,
+          backgroundColor: "#ffffff",
+          position: "absolute",
+        },
+      }}
+    >
+      <Tabs.Screen
+        name="(home)"
+        options={{
+          title: "journal",
+          headerShown: false,
+          tabBarIcon: ({ color, focused }) => (
+            <IconSymbol
+              size={28}
+              name={focused ? "newspaper.fill" : "newspaper"}
+              color={color}
+            />
           ),
-          headerTitleAlign: "left",
-          headerStyle: {
-            backgroundColor: "#000",
-          },
-          headerTintColor: "#fff",
         }}
-      >
-        <Stack.Screen name="index" options={{}} />
-        <Stack.Screen name="mood_photo_view" options={{}} />
-      </Stack>
-    </View>
+      />
+      <Tabs.Screen
+        name="people"
+        options={{
+          title: "people",
+          headerShown: false,
+          tabBarIcon: ({ color, focused }) => (
+            <IconSymbol
+              size={28}
+              name={focused ? "person.2.fill" : "person.2"}
+              color={color}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: "settings",
+          headerShown: false,
+          tabBarIcon: ({ color, focused }) => (
+            <IconSymbol
+              size={28}
+              name={focused ? "gearshape.fill" : "gearshape"}
+              color={color}
+            />
+          ),
+        }}
+      />
+    </Tabs>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-});

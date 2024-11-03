@@ -9,16 +9,16 @@ use axum::{
     response::Response,
     Extension, Json,
 };
-use jsonwebtoken::{decode, DecodingKey, Validation};
+use jsonwebtoken::{decode, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
 
-use crate::Account;
+use crate::{Account, JWT_KEY};
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct UserClaim {
-    id: i64,
-    username: String,
+    pub id: i64,
+    pub username: String,
 }
 
 // https://github.com/sam-rusty/axum-jwt-example/blob/main/src/main.rs
@@ -32,12 +32,15 @@ pub async fn validate_jwt(mut req: Request, next: Next) -> Result<Response, &'st
         Some(jwt_token) => jwt_token.replace("Bearer ", ""),
         None => return Err("Authorization token is missing"),
     };
-    let jwt_secret_key = std::env::var("JWT_SECRET_KEY").unwrap();
+
+    let mut validation = Validation::default();
+    validation.validate_exp = false; // Disable expiration validation
+    validation.required_spec_claims.remove("exp"); // Remove "exp" from required claims
 
     let token_payload = decode::<UserClaim>(
         &jwt_token,
-        &DecodingKey::from_secret(jwt_secret_key.as_ref()),
-        &Validation::default(),
+        &DecodingKey::from_secret(JWT_KEY.as_ref()),
+        &validation,
     );
 
     match token_payload {
@@ -45,17 +48,20 @@ pub async fn validate_jwt(mut req: Request, next: Next) -> Result<Response, &'st
             req.extensions_mut().insert(token_payload.claims);
             Ok(next.run(req).await)
         }
-        Err(_) => Err("Invalid Token"),
+        Err(e) => {
+            tracing::error!("{:?}", e);
+            Err("Invalid Token")
+        }
     }
 }
 
 pub async fn create_or_verify_account(
     Extension(db): Extension<SqlitePool>,
     Json(form): Json<Account>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<String, StatusCode> {
     // Check if account exists
     let existing = sqlx::query!(
-        "SELECT password FROM accounts WHERE username = ?",
+        "SELECT id, password FROM accounts WHERE username = ?",
         form.username
     )
     .fetch_optional(&db)
@@ -69,10 +75,28 @@ pub async fn create_or_verify_account(
             form.password.as_bytes(),
             &PasswordHash::new(&account.password).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
         ) {
-            Ok(()) => Ok(StatusCode::OK),
-            Err(_) => Err(StatusCode::UNAUTHORIZED),
+            Ok(()) => {
+                tracing::info!("Successful login for {}", form.username);
+
+                let claims = UserClaim {
+                    id: account.id,
+                    username: form.username,
+                };
+                jsonwebtoken::encode(
+                    &Header::default(),
+                    &claims,
+                    &EncodingKey::from_secret(JWT_KEY.as_ref()),
+                )
+                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
+            }
+            Err(_) => {
+                tracing::info!("Failed login for {}", form.username);
+                Err(StatusCode::UNAUTHORIZED)
+            }
         }
     } else {
+        tracing::info!("Creating new account {}", form.username);
+
         // Create new account
         let salt = SaltString::generate(&mut OsRng);
         let password_hash = argon2
@@ -89,6 +113,20 @@ pub async fn create_or_verify_account(
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-        Ok(StatusCode::CREATED)
+        let id = sqlx::query!("SELECT id FROM accounts WHERE username = ?", form.username)
+            .fetch_one(&db)
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+        let claims = UserClaim {
+            id: id.id,
+            username: form.username,
+        };
+        jsonwebtoken::encode(
+            &Header::default(),
+            &claims,
+            &EncodingKey::from_secret(JWT_KEY.as_ref()),
+        )
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
     }
 }

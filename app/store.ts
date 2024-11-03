@@ -1,27 +1,24 @@
 import { create } from "zustand";
-import { combine } from "zustand/middleware";
-
-function todayDate() {
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = String(today.getMonth() + 1).padStart(2, "0"); // Months are 0-indexed
-  const day = String(today.getDate()).padStart(2, "0");
-
-  const formattedDate = `${year}-${month}-${day}`;
-  return formattedDate;
-}
+import { combine, persist, createJSONStorage } from "zustand/middleware";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export const useStore = create(
-  combine(
+  persist(
+    combine(
+      {
+        loggedIn: false,
+        jwt: "",
+        hasFetchedEntries: false,
+      },
+      (set) => ({
+        setHasFetchedEntries: () => set({ hasFetchedEntries: true }),
+        logIn: (jwt: string) => set({ jwt: jwt, loggedIn: true }),
+        logOut: () => set({ jwt: "", loggedIn: false }),
+      }),
+    ),
     {
-      editingDate: todayDate(),
-      slideUpEditorState: 0,
+      name: "user-storage", // Unique name for the storage key
+      storage: createJSONStorage(() => AsyncStorage),
     },
-    (set) => ({
-      setEditingDate: (newEditingDate: string) =>
-        set({ editingDate: newEditingDate }),
-      setSlideUpEditorState: (newSlideUpEditorState: number) =>
-        set({ slideUpEditorState: newSlideUpEditorState }),
-    }),
   ),
 );

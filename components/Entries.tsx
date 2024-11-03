@@ -12,6 +12,8 @@ import {
 import ImageCarousel from "./ImageCarousel";
 import { useStore } from "@/app/store";
 import { Entry } from "@/app/utils/types";
+import { useEntries } from "@/app/query";
+import { useNavigation, useRouter } from "expo-router";
 
 export function bgColorFromDate(date: string): string {
   let dateString = new Date(date).toLocaleString("en-US", {
@@ -22,10 +24,23 @@ export function bgColorFromDate(date: string): string {
   });
 
   let dateHash = cyrb53(dateString);
-  // let dateHash = Math.floor(Math.random() * 1000);
   let hue = (dateHash % 90) * 4;
 
   return `hsl(${hue}, 10%, 50%)`;
+}
+
+export function fgColorFromDate(date: string): string {
+  let dateString = new Date(date).toLocaleString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+
+  let dateHash = cyrb53(dateString);
+  let hue = (dateHash % 90) * 4;
+
+  return `hsl(${hue}, 50%, 15%)`;
 }
 
 function EntryPreview(entry: { date: string; post_text: string }) {
@@ -39,7 +54,11 @@ function EntryPreview(entry: { date: string; post_text: string }) {
     timeZone: "UTC",
   });
 
+  const router = useRouter();
   const setEditingDate = useStore((store) => store.setEditingDate);
+  const setSlideUpEditorState = useStore(
+    (store) => store.setSlideUpEditorState,
+  );
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: [entry.date],
@@ -58,7 +77,8 @@ function EntryPreview(entry: { date: string; post_text: string }) {
   return (
     <TouchableOpacity
       onPress={() => {
-        setEditingDate(entry.date);
+        console.log(`navigating to: /entry/${entry.date}`);
+        router.navigate(`/entry/${entry.date}`);
       }}
       activeOpacity={1}
     >
@@ -68,14 +88,16 @@ function EntryPreview(entry: { date: string; post_text: string }) {
           padding: 8,
           flexDirection: "column",
           gap: 8,
+          borderColor: "black",
+          borderBottomWidth: 4,
           backgroundColor: `hsl(${hue}, 10%, 50%)`,
         }}
       >
         <Text
           style={{
             color: `hsl(${hue}, 50%, 15%)`,
-            fontWeight: "condensedBold",
-            fontFamily: "Georgia",
+            fontWeight: "semibold",
+            fontFamily: "Helvetica Neue",
             fontSize: 20,
           }}
         >
@@ -90,8 +112,8 @@ function EntryPreview(entry: { date: string; post_text: string }) {
           <Text
             style={{
               color: `hsl(${hue}, 50%, 15%)`,
-              fontWeight: "condensedBold",
-              fontFamily: "Georgia",
+              fontWeight: "regular",
+              fontFamily: "Helvetica Neue",
               fontSize: 14,
             }}
           >
@@ -104,16 +126,7 @@ function EntryPreview(entry: { date: string; post_text: string }) {
 }
 
 export default function Entries() {
-  const { data, isLoading, isError, error } = useQuery<Entry[]>({
-    queryKey: ["posts"],
-    queryFn: async () => {
-      const response = await fetch("http://localhost:3000/get-entries");
-      if (!response.ok) {
-        throw new Error("Network response was not ok");
-      }
-      return response.json();
-    },
-  });
+  const { data, isLoading, isError, error } = useEntries();
 
   if (isError) {
     return <Text>Error: {error.message}</Text>;
@@ -125,38 +138,11 @@ export default function Entries() {
 
   return (
     <View style={{ paddingBottom: 256 }}>
-      {data && data.length > 0 ? (
-        <LinearGradient
-          colors={[`#000`, bgColorFromDate(data![0].date)]}
-          style={{ height: 30 }}
-        ></LinearGradient>
-      ) : (
-        <></>
-      )}
       {data!.map((d, i) => (
         <View key={i}>
-          {i !== 0 ? (
-            <LinearGradient
-              colors={[
-                bgColorFromDate(data![i - 1].date),
-                bgColorFromDate(data![i].date),
-              ]}
-              style={{ height: 30 }}
-            ></LinearGradient>
-          ) : (
-            <></>
-          )}
           <EntryPreview key={i} date={d!.date} post_text={d!.post_text} />
         </View>
       ))}
-      {data && data.length > 0 ? (
-        <LinearGradient
-          colors={[bgColorFromDate(data![data.length - 1].date), `#000`]}
-          style={{ height: 30 }}
-        ></LinearGradient>
-      ) : (
-        <></>
-      )}
     </View>
   );
 }

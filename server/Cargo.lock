@@ -2294,6 +2294,7 @@ dependencies = [
  "chrono",
  "dotenv",
  "jsonwebtoken",
+ "lazy_static",
  "magick_rust",
  "rand",
  "serde",

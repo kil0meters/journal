@@ -1,7 +1,7 @@
 import Entries from "@/components/Entries";
 import SlideUpEditor from "@/components/SlideUpEditor";
 import { useQueryClient } from "@tanstack/react-query";
-import { useNavigation } from "expo-router";
+import { Stack, useNavigation } from "expo-router";
 import { useCallback, useState } from "react";
 import {
   Dimensions,
@@ -22,13 +22,19 @@ export default function Home() {
 
   return (
     <>
+      <Stack.Screen
+        options={{
+          title: "journal app",
+          headerTintColor: "black",
+        }}
+      />
       <View
         style={{
           height: Dimensions.get("window").height,
-          backgroundColor: "#000000",
+          backgroundColor: "white",
         }}
       >
-        <ScrollView style={{ backgroundColor: "#000" }}>
+        <ScrollView style={{ backgroundColor: "#fff" }}>
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
@@ -39,8 +45,6 @@ export default function Home() {
           <Entries />
         </ScrollView>
       </View>
-
-      {(Platform.OS == "ios" || Platform.OS === "android") && <SlideUpEditor />}
     </>
   );
 }

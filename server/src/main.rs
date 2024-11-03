@@ -1,11 +1,13 @@
 use anyhow::Context;
-use auth::validate_jwt;
+use auth::{validate_jwt, UserClaim};
 use axum::{
     extract::{Multipart, Path, State},
     http::StatusCode,
     routing::{get, post},
     Extension, Json, Router,
 };
+use error::AppError;
+use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use sqlx::{sqlite::SqlitePoolOptions, SqlitePool};
 use tokio::{fs::File, io::AsyncWriteExt};
@@ -13,15 +15,21 @@ use tower_http::trace::TraceLayer;
 use tracing::Level;
 
 mod auth;
+mod error;
+
+lazy_static! {
+    static ref JWT_KEY: Vec<u8> = std::env::var("JWT_KEY")
+        .expect("JWT_KEY must be set")
+        .as_bytes()
+        .to_vec();
+}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     dotenv::dotenv().ok();
 
     // initialize tracing
-    tracing_subscriber::fmt()
-        .with_max_level(Level::DEBUG)
-        .finish();
+    tracing_subscriber::fmt().with_max_level(Level::INFO).init();
 
     let db = SqlitePoolOptions::new()
         .connect("./database.sqlite")
@@ -60,12 +68,16 @@ struct JournalEntry {
 
 async fn save_entry(
     Extension(db): Extension<SqlitePool>,
+    Extension(claims): Extension<UserClaim>,
     Json(form): Json<JournalEntry>,
 ) -> StatusCode {
+    tracing::info!("Updating entry for {} (id={})", claims.username, claims.id);
+
     match sqlx::query!(
-        "INSERT OR REPLACE INTO entries (body, date) VALUES (?, ?)",
+        "INSERT OR REPLACE INTO entries (body, date, account_id) VALUES (?, ?, ?)",
         form.post_text,
-        form.date
+        form.date,
+        claims.id,
     )
     .execute(&db)
     .await
@@ -74,6 +86,7 @@ async fn save_entry(
         Err(_) => StatusCode::INTERNAL_SERVER_ERROR,
     }
 }
+
 #[derive(Deserialize)]
 struct Account {
     username: String,
@@ -126,23 +139,50 @@ async fn upload_images(
     Ok(StatusCode::OK)
 }
 
+async fn create_today(db: &SqlitePool, claims: &UserClaim) -> Result<(), AppError> {
+    let today = chrono::Utc::now().format("%Y-%m-%d").to_string();
+
+    tracing::info!(
+        "Creating entry ({}) for {} (id={})",
+        today,
+        claims.username,
+        claims.id
+    );
+
+    sqlx::query!(
+        "INSERT OR IGNORE INTO entries (date, body, account_id)
+         VALUES (?, '', ?)",
+        today,
+        claims.id
+    )
+    .execute(db)
+    .await?;
+
+    Ok(())
+}
+
 async fn get_entries(
     Extension(db): Extension<SqlitePool>,
-) -> (StatusCode, Json<Vec<JournalEntry>>) {
-    match sqlx::query!("SELECT date, body FROM entries ORDER BY date DESC")
-        .fetch_all(&db)
-        .await
-    {
-        Ok(rows) => {
-            let entries = rows
-                .into_iter()
-                .map(|row| JournalEntry {
-                    date: row.date,
-                    post_text: row.body,
-                })
-                .collect();
-            (StatusCode::OK, Json(entries))
-        }
-        Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, Json(vec![])),
-    }
+    Extension(claims): Extension<UserClaim>,
+) -> Result<Json<Vec<JournalEntry>>, AppError> {
+    tracing::info!("Getting entries for {} (id={})", claims.username, claims.id);
+
+    create_today(&db, &claims).await?;
+
+    let rows = sqlx::query!(
+        "SELECT date, body FROM entries WHERE account_id = ? ORDER BY date DESC",
+        claims.id
+    )
+    .fetch_all(&db)
+    .await?;
+
+    let entries = rows
+        .into_iter()
+        .map(|row| JournalEntry {
+            date: row.date,
+            post_text: row.body,
+        })
+        .collect();
+
+    Ok(Json(entries))
 }
