@@ -4,7 +4,7 @@ import {
   ThemeProvider,
 } from "@react-navigation/native";
 import { useFonts } from "expo-font";
-import { Stack } from "expo-router";
+import { Stack, useRootNavigationState, useRouter } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { AppState, Platform } from "react-native";
 import { HoldMenuProvider } from "react-native-hold-menu";
@@ -22,6 +22,8 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 import NetInfo from "@react-native-community/netinfo";
 import { onlineManager } from "@tanstack/react-query";
+import { synchronizePhotos } from "./photos";
+import { useStore } from "./store";
 
 const queryClient = new QueryClient();
 
@@ -53,6 +55,10 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
+    synchronizePhotos();
+  }, []);
+
+  useEffect(() => {
     if (loaded) {
       SplashScreen.hideAsync();
     }
@@ -69,9 +75,9 @@ export default function RootLayout() {
           <ThemeProvider
             value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
           >
-            <Stack>
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack initialRouteName="/login">
               <Stack.Screen name="login" />
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
               <Stack.Screen name="+not-found" />
             </Stack>
           </ThemeProvider>

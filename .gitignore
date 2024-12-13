@@ -23,4 +23,6 @@ expo-env.d.ts
 server/target/*
 server/outputs/*
 server/test_images/*
+server/test_faces/*
+server/uploads/*
 database.sqlite

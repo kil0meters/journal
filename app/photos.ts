@@ -1,55 +1,118 @@
 import * as MediaLibrary from "expo-media-library";
 import { Alert } from "react-native";
+import { useStore } from "./store";
+import * as SQLite from "expo-sqlite";
+import mime from "mime";
 
-export async function getPhotosOnDate(date: Date) {
-  try {
-    // Request media library permissions
-    const { status } = await MediaLibrary.requestPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert(
-        "Permission Required",
-        "Permission to access the media library is required.",
+async function uploadPhotos(
+  db: SQLite.SQLiteDatabase,
+  assets: MediaLibrary.Asset[],
+) {
+  const store = useStore.getState();
+
+  for (const asset of assets) {
+    const assetInfo = await MediaLibrary.getAssetInfoAsync(asset);
+    const formData = new FormData();
+
+    if (assetInfo.mediaType != "photo") continue;
+
+    // @ts-ignore
+    formData.append("image", {
+      uri: assetInfo.localUri || assetInfo.uri,
+      name: assetInfo.filename,
+      type: mime.getType(assetInfo.filename),
+    });
+
+    console.log(formData);
+
+    let response = await fetch(
+      `http://localhost:3000/upload-image/${asset.creationTime / 1000}`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${encodeURI(useStore.getState().jwt)}`,
+          "Content-Type": "multipart/form-data",
+        },
+        body: formData,
+      },
+    );
+
+    if (response.ok) {
+      await db.runAsync("INSERT INTO uploaded_photos (photo_id) VALUES (?)", [
+        asset.id,
+      ]);
+
+      store.setPhotosBackupProgress(
+        store.photosBackedUp + 1,
+        store.photosToBackup,
       );
-      return [];
     }
+  }
 
-    // adjust date timezone
-    date.setDate(date.getUTCDate());
+  return;
+}
 
-    // Calculate start and end timestamps of the date
-    const startOfDay = new Date(date);
-    startOfDay.setHours(0, 0, 0, 0);
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
-    const endOfDay = new Date(date);
-    endOfDay.setHours(23, 59, 59, 999);
+export async function synchronizePhotos() {
+  const store = useStore.getState();
 
-    // Prepare query options
-    const options = {
-      mediaType: [MediaLibrary.MediaType.photo],
-      createdAfter: startOfDay,
-      createdBefore: endOfDay,
-      sortBy: [[MediaLibrary.SortBy.creationTime, false]], // false for descending order
-      first: 100,
-    } satisfies MediaLibrary.AssetsOptions;
+  while (true) {
+    if (store.photoBackupEnabled && store.loggedIn) {
+      console.log("synchronizing photos");
 
-    let assets: MediaLibrary.Asset[] = [];
-    let page = await MediaLibrary.getAssetsAsync(options);
+      const db = await SQLite.openDatabaseAsync("database.sqlite");
+      await db.execAsync(
+        "CREATE TABLE IF NOT EXISTS uploaded_photos (id INTEGER PRIMARY KEY NOT NULL, photo_id TEXT NOT NULL)",
+      );
 
-    // Collect the first page of assets
-    assets = assets.concat(page.assets);
+      // Request media library permissions
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(
+          "Permission Required",
+          "Permission to access the media library is required.",
+        );
+        return;
+      }
 
-    // Loop through remaining pages if they exist
-    while (page.hasNextPage) {
-      page = await MediaLibrary.getAssetsAsync({
-        ...options,
-        after: page.endCursor,
-      });
+      // Prepare query options
+      const options = {
+        mediaType: [MediaLibrary.MediaType.photo],
+        sortBy: [[MediaLibrary.SortBy.creationTime, false]], // false for descending order
+        first: 20,
+      } satisfies MediaLibrary.AssetsOptions;
+
+      let assets: MediaLibrary.Asset[] = [];
+      let page = await MediaLibrary.getAssetsAsync(options);
       assets = assets.concat(page.assets);
+
+      // Loop through remaining pages if they exist
+      while (page.hasNextPage) {
+        page = await MediaLibrary.getAssetsAsync({
+          ...options,
+          after: page.endCursor,
+        });
+        assets = assets.concat(page.assets);
+      }
+
+      const uploadedPhotoIds = (
+        await db.getAllAsync<{ photo_id: string }>(
+          "SELECT photo_id FROM uploaded_photos",
+        )
+      ).map((photo) => photo.photo_id);
+
+      const filteredAssets = assets.filter(
+        (asset) => !uploadedPhotoIds.includes(asset.id),
+      );
+
+      store.setPhotosBackupProgress(filteredAssets.length, 0);
+
+      await uploadPhotos(db, filteredAssets);
     }
 
-    return assets;
-  } catch (error) {
-    console.error("Error fetching photos:", error);
-    return [];
+    await sleep(10000);
   }
 }

@@ -1,5 +1,5 @@
 import Entries from "@/components/Entries";
-import SlideUpEditor from "@/components/SlideUpEditor";
+import { StatusBar } from "expo-status-bar";
 import { useQueryClient } from "@tanstack/react-query";
 import { Stack, useNavigation } from "expo-router";
 import { useCallback, useState } from "react";
@@ -10,6 +10,7 @@ import {
   ScrollView,
   View,
 } from "react-native";
+import { useEntries } from "@/app/query";
 
 export default function Home() {
   const [refreshing, setRefreshing] = useState(false);
@@ -20,11 +21,14 @@ export default function Home() {
     queryClient.invalidateQueries({ queryKey: ["posts"] });
   }, []);
 
+  const { data } = useEntries();
+
   return (
     <>
+      <StatusBar style="dark" />
       <Stack.Screen
         options={{
-          title: "journal app",
+          title: "journal",
           headerTintColor: "black",
         }}
       />
@@ -41,8 +45,7 @@ export default function Home() {
             // progressViewOffset={2}
             progressBackgroundColor="#ff0000"
           />
-
-          <Entries />
+          {data && <Entries navigationPrefix="/(home)/entry/" entries={data} />}
         </ScrollView>
       </View>
     </>

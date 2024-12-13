@@ -13,3 +13,12 @@ export const cyrb53 = (str: string, seed = 0) => {
 
   return 4294967296 * (2097151 & h2) + (h1 >>> 0);
 };
+
+export const humanReadableDate = (date: string | Date) => {
+  return new Date(date).toLocaleString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+};

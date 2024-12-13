@@ -1,50 +1,46 @@
-# Welcome to your Expo app 👋
+# journal app
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+This is my capstone project for Chico State. It is aimed at streamlining my
+existing workflow for journaling using [Obsidian](https://obsidian.md).
 
-## Get started
+This is a journaling app designed around a very particular workflow. Every day
+has a single entry, and there are photos associated with that entry.
+Additionally, there is a separate tab containing "people" where you can store
+each of your friends' pictures and names.
+
+The app will then automatically tag daily journal entries using facial
+recognition and name mentions. You can then easily view each day where you
+interacted with any given person.
+
+| entry view                                                                                     | person view                                                                              |
+| ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| ![entry view](https://github.com/user-attachments/assets/f4bfa7b3-bc2c-4dcd-ae1e-71e85f83813e) | ![face](https://github.com/user-attachments/assets/5b4cec2c-76f2-482e-a210-3d3f5037e5db) |
+
+The app also acts as a competitor to services like Google Photos, as it stores all of your photos on the server.
+
+## Running the App
+
+The app needs to be significantly more polished before publishing to the App Store, but you can run it locally as follows:
 
 1. Install dependencies
 
    ```bash
    npm install
+   cd server
+   python -m venv venv
+   # === activate venv ===
+   pip install setuptools pillow pillow-heif pillow-avif-plugin face_recognition opencv-python
    ```
 
-2. Start the app
+2. Start the server
 
    ```bash
-    npx expo start
+   cd server
+   JWT_KEY="some_secret" cargo run
    ```
 
-In the output, you'll find options to open the app in a
+3. Start the app
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
-```
-
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+   ```bash
+   npx expo start
+   ```

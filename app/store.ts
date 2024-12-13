@@ -6,11 +6,21 @@ export const useStore = create(
   persist(
     combine(
       {
+        photoBackupEnabled: false,
+        photosToBackup: 0,
+        photosBackedUp: 0,
+
         loggedIn: false,
         jwt: "",
         hasFetchedEntries: false,
       },
       (set) => ({
+        setPhotoBackupEnabled: (val: boolean) =>
+          set({ photoBackupEnabled: val }),
+
+        setPhotosBackupProgress: (toBackup: number, backedUp: number) =>
+          set({ photosToBackup: toBackup, photosBackedUp: backedUp }),
+
         setHasFetchedEntries: () => set({ hasFetchedEntries: true }),
         logIn: (jwt: string) => set({ jwt: jwt, loggedIn: true }),
         logOut: () => set({ jwt: "", loggedIn: false }),

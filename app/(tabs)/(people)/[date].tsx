@@ -4,7 +4,7 @@ import EntryEditor from "@/components/EntryEditor";
 import { Stack, useLocalSearchParams } from "expo-router";
 
 export default function EntryPage() {
-  const { date } = useLocalSearchParams() as { date: string };
+  const { id, date } = useLocalSearchParams() as { date: string; id: string };
 
   return (
     <>

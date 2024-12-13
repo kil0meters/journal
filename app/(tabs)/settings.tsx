@@ -1,9 +1,70 @@
 import { useState } from "react";
-import { View, TextInput, TouchableOpacity, Alert } from "react-native";
+import {
+  View,
+  TextInput,
+  TouchableOpacity,
+  Alert,
+  SafeAreaView,
+  Switch,
+  ScrollView,
+} from "react-native";
 import { Button, Text, StyleSheet, Platform } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useStore } from "@/app/store";
+import CustomHeader from "@/components/CustomHeader";
+
+function PhotoBackup() {
+  const photoBackupEnabled = useStore((store) => store.photoBackupEnabled);
+  const photosBackedUp = useStore((store) => store.photosBackedUp);
+  const photosToBackup = useStore((store) => store.photosToBackup);
+
+  return (
+    <View
+      style={{
+        flexDirection: "column",
+        padding: 16,
+      }}
+    >
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          width: "100%",
+        }}
+      >
+        <View>
+          <Text
+            style={{
+              fontSize: 20,
+              color: "#000",
+            }}
+          >
+            backup photos
+          </Text>
+
+          {photosBackedUp == 0 && photosToBackup == 0 ? (
+            <Text style={{ color: "#aaa", fontSize: 11 }}>
+              All photos backed up.
+            </Text>
+          ) : (
+            <Text style={{ color: "#aaa", fontSize: 11 }}>
+              {photosBackedUp} out of {photosToBackup} photos backed up
+            </Text>
+          )}
+        </View>
+
+        <Switch
+          value={photoBackupEnabled}
+          onValueChange={(value) =>
+            useStore.getState().setPhotoBackupEnabled(value)
+          }
+        />
+      </View>
+    </View>
+  );
+}
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
@@ -50,28 +111,19 @@ export default function LoginPage() {
           headerTintColor: "black",
         }}
       />
-      <View style={styles.container}>
-        <TextInput
-          style={styles.input}
-          autoCapitalize="none"
-          placeholder="Username"
-          placeholderTextColor="gray"
-          value={username}
-          onChangeText={setUsername}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          autoCapitalize="none"
-          placeholderTextColor="gray"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
-        <TouchableOpacity style={styles.button} onPress={handleLogin}>
-          <Text style={styles.buttonText}>Login</Text>
-        </TouchableOpacity>
-      </View>
+      <SafeAreaView style={styles.container}>
+        <PhotoBackup />
+
+        <View style={{ padding: 8 }}>
+          <Button
+            onPress={() => {
+              useStore.getState().logOut();
+              router.navigate("/");
+            }}
+            title="Log Out"
+          />
+        </View>
+      </SafeAreaView>
     </>
   );
 }
@@ -80,7 +132,6 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: "white",
     flex: 1,
-    alignItems: "center",
     padding: 20,
   },
   input: {

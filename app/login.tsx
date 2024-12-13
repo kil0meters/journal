@@ -47,7 +47,7 @@ export default function LoginPage() {
       <Stack.Screen
         options={{
           title: "Login",
-          headerTintColor: "black",
+          headerTintColor: "white",
         }}
       />
       <View style={styles.container}>

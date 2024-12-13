@@ -11,39 +11,93 @@ import {
 } from "react-native";
 import ImageCarousel from "./ImageCarousel";
 import { useStore } from "@/app/store";
-import { Entry } from "@/app/utils/types";
-import { useEntries } from "@/app/query";
+import { JournalEntry, useEntries } from "@/app/query";
 import { useNavigation, useRouter } from "expo-router";
+import EntryPage from "@/app/(tabs)/(home)/entry/[date]";
+
+const entryBgColors = [
+  "#cc6666",
+  "#cc7a66",
+  "#cc8f66",
+  "#cca366",
+  "#ccb866",
+  "#cccc66",
+  "#b8cc66",
+  "#a3cc66",
+  "#8fcc66",
+  "#7acc66",
+  "#66cc66",
+  "#66cc7a",
+  "#66cc8f",
+  "#66cca3",
+  "#66ccb8",
+  "#66cccc",
+  "#66b8cc",
+  "#66a3cc",
+  "#668fcc",
+  "#667acc",
+  "#6666cc",
+  "#7a66cc",
+  "#8f66cc",
+  "#a366cc",
+  "#b866cc",
+  "#cc66cc",
+  "#cc66b8",
+  "#cc66a3",
+  "#cc668f",
+  "#cc667a",
+];
+
+const entryFgColors = [
+  "#331a1a",
+  "#331f1a",
+  "#33241a",
+  "#33291a",
+  "#332e1a",
+  "#33331a",
+  "#2e331a",
+  "#29331a",
+  "#24331a",
+  "#1f331a",
+  "#1a331a",
+  "#1a331f",
+  "#1a3324",
+  "#1a3329",
+  "#1a332e",
+  "#1a3333",
+  "#1a2e33",
+  "#1a2933",
+  "#1a2433",
+  "#1a1f33",
+  "#1a1a33",
+  "#1f1a33",
+  "#241a33",
+  "#291a33",
+  "#2e1a33",
+  "#331a33",
+  "#331a2e",
+  "#331a29",
+  "#331a24",
+  "#331a1f",
+];
 
 export function bgColorFromDate(date: string): string {
-  let dateString = new Date(date).toLocaleString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    timeZone: "UTC",
-  });
+  let daysSinceEpoch = Math.floor(
+    new Date(date).getTime() / (24 * 60 * 60 * 1000),
+  );
 
-  let dateHash = cyrb53(dateString);
-  let hue = (dateHash % 90) * 4;
-
-  return `hsl(${hue}, 10%, 50%)`;
+  return entryBgColors[daysSinceEpoch % entryBgColors.length];
 }
 
 export function fgColorFromDate(date: string): string {
-  let dateString = new Date(date).toLocaleString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    timeZone: "UTC",
-  });
+  let daysSinceEpoch = Math.floor(
+    new Date(date).getTime() / (24 * 60 * 60 * 1000),
+  );
 
-  let dateHash = cyrb53(dateString);
-  let hue = (dateHash % 90) * 4;
-
-  return `hsl(${hue}, 50%, 15%)`;
+  return entryFgColors[daysSinceEpoch % entryFgColors.length];
 }
 
-function EntryPreview(entry: { date: string; post_text: string }) {
+function EntryPreview(entry: JournalEntry & { navigationPrefix: string }) {
   const queryClient = useQueryClient();
 
   // generate color based on hash from
@@ -55,10 +109,6 @@ function EntryPreview(entry: { date: string; post_text: string }) {
   });
 
   const router = useRouter();
-  const setEditingDate = useStore((store) => store.setEditingDate);
-  const setSlideUpEditorState = useStore(
-    (store) => store.setSlideUpEditorState,
-  );
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: [entry.date],
@@ -67,18 +117,11 @@ function EntryPreview(entry: { date: string; post_text: string }) {
     },
   });
 
-  let dateHash = cyrb53(dateString);
-  let hue = (dateHash % 90) * 4;
-
-  if (data) {
-    console.log(data);
-  }
-
   return (
     <TouchableOpacity
       onPress={() => {
-        console.log(`navigating to: /entry/${entry.date}`);
-        router.navigate(`/entry/${entry.date}`);
+        console.log(`Navigating to ${entry.navigationPrefix}${entry.date}`);
+        router.navigate(`${entry.navigationPrefix}${entry.date}` as any);
       }}
       activeOpacity={1}
     >
@@ -90,12 +133,12 @@ function EntryPreview(entry: { date: string; post_text: string }) {
           gap: 8,
           borderColor: "black",
           borderBottomWidth: 4,
-          backgroundColor: `hsl(${hue}, 10%, 50%)`,
+          backgroundColor: bgColorFromDate(entry.date),
         }}
       >
         <Text
           style={{
-            color: `hsl(${hue}, 50%, 15%)`,
+            color: fgColorFromDate(entry.date),
             fontWeight: "semibold",
             fontFamily: "Helvetica Neue",
             fontSize: 20,
@@ -111,7 +154,7 @@ function EntryPreview(entry: { date: string; post_text: string }) {
           )}
           <Text
             style={{
-              color: `hsl(${hue}, 50%, 15%)`,
+              color: fgColorFromDate(entry.date),
               fontWeight: "regular",
               fontFamily: "Helvetica Neue",
               fontSize: 14,
@@ -125,22 +168,24 @@ function EntryPreview(entry: { date: string; post_text: string }) {
   );
 }
 
-export default function Entries() {
-  const { data, isLoading, isError, error } = useEntries();
-
-  if (isError) {
-    return <Text>Error: {error.message}</Text>;
-  }
-
-  if (isLoading) {
-    return <ActivityIndicator size="large" color="#0000ff" />;
-  }
-
+export default function Entries({
+  entries,
+  navigationPrefix,
+}: {
+  entries: JournalEntry[];
+  navigationPrefix: string;
+}) {
   return (
     <View style={{ paddingBottom: 256 }}>
-      {data!.map((d, i) => (
+      <View style={{ borderTopWidth: 4 }}></View>
+      {entries.map((d, i) => (
         <View key={i}>
-          <EntryPreview key={i} date={d!.date} post_text={d!.post_text} />
+          <EntryPreview
+            navigationPrefix={navigationPrefix}
+            key={i}
+            date={d!.date}
+            post_text={d!.post_text}
+          />
         </View>
       ))}
     </View>
