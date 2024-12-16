@@ -38,8 +38,16 @@ export const usePeopleForEntry = (date: string) =>
     queryFn: async () => serverRequest(`/get-people-for-entry/${date}`),
   });
 
+export type PhotoWithBoundingBoxes = {
+  url: string;
+  bounding_boxes: {
+    person: Person;
+    bounding_box: [number, number, number, number];
+  }[];
+};
+
 export const usePhotosForEntry = (date: string) =>
-  useQuery<string[]>({
+  useQuery<PhotoWithBoundingBoxes>({
     queryKey: [`photos-for-entry-${date}`],
     queryFn: async () => serverRequest(`/get-photos-for-entry/${date}`),
   });

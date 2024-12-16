@@ -1,19 +1,15 @@
-import { getPhotosOnDate } from "@/app/photos";
-import { cyrb53 } from "@/app/util";
+import RenderHtml from "react-native-render-html";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { LinearGradient } from "expo-linear-gradient";
 import {
-  ActivityIndicator,
-  ScrollView,
   Text,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from "react-native";
 import ImageCarousel from "./ImageCarousel";
-import { useStore } from "@/app/store";
-import { JournalEntry, useEntries } from "@/app/query";
-import { useNavigation, useRouter } from "expo-router";
-import EntryPage from "@/app/(tabs)/(home)/entry/[date]";
+import { JournalEntry } from "@/app/query";
+import { useRouter } from "expo-router";
 
 const entryBgColors = [
   "#cc6666",
@@ -109,13 +105,7 @@ function EntryPreview(entry: JournalEntry & { navigationPrefix: string }) {
   });
 
   const router = useRouter();
-
-  const { data, isLoading, isError, error } = useQuery({
-    queryKey: [entry.date],
-    queryFn: async () => {
-      return await getPhotosOnDate(new Date(entry.date));
-    },
-  });
+  const { width } = useWindowDimensions();
 
   return (
     <TouchableOpacity
@@ -147,21 +137,14 @@ function EntryPreview(entry: JournalEntry & { navigationPrefix: string }) {
           {dateString}
         </Text>
         <View>
-          {data && data.length > 0 ? (
-            <ImageCarousel imageUrls={data.map((img) => img.uri)} />
-          ) : (
-            <></>
-          )}
-          <Text
-            style={{
-              color: fgColorFromDate(entry.date),
-              fontWeight: "regular",
+          <RenderHtml
+            contentWidth={width}
+            source={{ html: entry.post_text }}
+            baseStyle={{
               fontFamily: "Helvetica Neue",
-              fontSize: 14,
+              color: fgColorFromDate(entry.date),
             }}
-          >
-            {entry.post_text}
-          </Text>
+          />
         </View>
       </View>
     </TouchableOpacity>

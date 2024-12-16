@@ -6,7 +6,7 @@ export default function Index() {
   console.log(`loggedIn: ${loggedIn}`);
 
   if (loggedIn) {
-    return <Redirect href="/main" />;
+    return <Redirect href="/(home)/main" />;
   } else {
     return <Redirect href="/login" />;
   }

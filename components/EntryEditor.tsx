@@ -1,6 +1,9 @@
 import Gallery, { RenderItemInfo } from "react-native-awesome-gallery";
+import { useAtom, atom } from "jotai";
 import {
   JournalEntry,
+  Person,
+  PhotoWithBoundingBoxes,
   useEntries,
   usePeople,
   usePeopleForEntry,
@@ -20,7 +23,7 @@ import {
   useEditorBridge,
 } from "@10play/tentap-editor";
 import { useQueryClient } from "@tanstack/react-query";
-import { Stack } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import PagerView from "react-native-pager-view";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -34,8 +37,11 @@ import {
   Modal,
 } from "react-native";
 import PersonList from "./PersonList";
-import { Image } from "expo-image";
+import { Image, ImageBackground } from "expo-image";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
+import { TouchableOpacity } from "react-native-gesture-handler";
+
+const selectedPhotoAtom = atom<string | null>(null);
 
 function cancellableSend(func: () => void, delayMs: number) {
   let timeoutId: any;
@@ -49,27 +55,70 @@ function cancellableSend(func: () => void, delayMs: number) {
 const renderItem = ({
   item,
   setImageDimensions,
-}: RenderItemInfo<{ uri: string }>) => {
+}: RenderItemInfo<PhotoWithBoundingBoxes>) => {
+  const [_, setSelectedPhoto] = useAtom(selectedPhotoAtom);
+  const [imageDimensions, setImageDimensions2] = useState({
+    width: 1,
+    height: 1,
+  });
+
+  const router = useRouter();
+
   return (
-    <Image
-      source={{
-        uri: item.uri,
-        headers: {
-          Authorization: `Bearer ${useStore.getState().jwt}`,
-        },
-      }}
-      style={StyleSheet.absoluteFillObject}
-      contentFit="contain"
-      onLoad={(e) => {
-        const { width, height } = e.source;
-        setImageDimensions({ width, height });
-      }}
-    />
+    <View style={{ flex: 1, alignItems: "center", paddingTop: 128 }}>
+      <ImageBackground
+        source={{
+          uri: `http://localhost:3000${item.url}`,
+          headers: {
+            Authorization: `Bearer ${useStore.getState().jwt}`,
+          },
+        }}
+        imageStyle={[StyleSheet.absoluteFillObject]}
+        contentFit="contain"
+        onLoad={(e) => {
+          const { width, height } = e.source;
+          setImageDimensions({ width, height });
+          setImageDimensions2({ width, height });
+        }}
+      >
+        <View
+          style={{
+            aspectRatio: imageDimensions.width / imageDimensions.height,
+            alignSelf: "center",
+            width: "100%",
+          }}
+        >
+          {item.bounding_boxes?.map(({ bounding_box: bb, person }, index) => (
+            <View
+              key={index}
+              style={{
+                position: "absolute",
+                left: `${(bb[0] / imageDimensions.width) * 100}%`,
+                // top: `${(bb[1] / imageDimensions.height) * 100}%`,
+                top: `${(bb[1] / imageDimensions.height) * 100}%`,
+                width: `${((bb[2] - bb[0]) / imageDimensions.width) * 100}%`,
+                height: `${((bb[3] - bb[1]) / imageDimensions.height) * 100}%`,
+                borderWidth: 1,
+                borderColor: "rgba(255,255,255,0.5)",
+              }}
+            >
+              <TouchableOpacity
+                style={{ width: "100%", height: "100%" }}
+                onPress={() => {
+                  setSelectedPhoto(null);
+                  router.navigate(`/(people)/person/${person.id}`);
+                }}
+              ></TouchableOpacity>
+            </View>
+          ))}
+        </View>
+      </ImageBackground>
+    </View>
   );
 };
 
-function PhotoGrid({ photos }: { photos: { url: string }[] }) {
-  const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
+function PhotoGrid({ photos }: { photos: PhotoWithBoundingBoxes[] }) {
+  const [selectedPhoto, setSelectedPhoto] = useAtom(selectedPhotoAtom);
 
   console.log(photos);
 
@@ -87,7 +136,7 @@ function PhotoGrid({ photos }: { photos: { url: string }[] }) {
           >
             <Image
               source={{
-                uri: photo.url,
+                uri: `http://localhost:3000${photo.url}`,
                 headers: {
                   Authorization: `Bearer ${useStore.getState().jwt}`,
                 },
@@ -117,11 +166,7 @@ function PhotoGrid({ photos }: { photos: { url: string }[] }) {
         >
           <Gallery
             renderItem={renderItem}
-            data={photos.map((photo) => {
-              return {
-                uri: photo.url,
-              };
-            })}
+            data={photos}
             initialIndex={photos.findIndex(
               (photo) => photo.url === selectedPhoto,
             )}
@@ -149,7 +194,7 @@ function EntryEditor({
 
       let newData = {
         date: date,
-        post_text: await editor.getText(),
+        post_text: await editor.getHTML(),
       };
 
       console.log(`saving: ${JSON.stringify(newData)}`);
@@ -194,7 +239,7 @@ function EntryEditor({
       style={{
         flex: 1,
         alignSelf: "stretch",
-        padding: 12,
+        paddingHorizontal: 16,
       }}
     >
       <RichText
@@ -267,7 +312,6 @@ export default function EntryView({ date }: { date: string }) {
           style={{
             flex: 1,
             alignSelf: "stretch",
-            padding: 12,
           }}
           scrollEnabled={false}
           initialPage={selectedIndex}
@@ -278,17 +322,7 @@ export default function EntryView({ date }: { date: string }) {
           <View key={0}>
             <EntryEditor currentEntry={currentEntry!} date={date} />
           </View>
-          <View key={1}>
-            {photos && (
-              <PhotoGrid
-                photos={photos.map((photo) => {
-                  return {
-                    url: `http://localhost:3000${photo}`,
-                  };
-                })}
-              />
-            )}
-          </View>
+          <View key={1}>{photos && <PhotoGrid photos={photos} />}</View>
           <View key={2}>{people && <PersonList people={people} />}</View>
         </PagerView>
       </View>

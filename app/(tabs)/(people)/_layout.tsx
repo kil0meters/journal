@@ -29,16 +29,23 @@ export default function Layout() {
             <CustomHeader
               title={props.children}
               color={props.tintColor}
-              button={() => (
-                <TouchableOpacity
-                  onPress={() => {
-                    router.navigate(`/(people)/create`);
-                  }}
-                  style={{ paddingRight: 24 }} // Add padding
-                >
-                  <IconSymbol size={28} name={"plus.circle"} color="black" />
-                </TouchableOpacity>
-              )}
+              button={
+                props.children == "people"
+                  ? () => (
+                      <TouchableOpacity
+                        onPress={() => {
+                          router.navigate(`/(people)/create`);
+                        }}
+                      >
+                        <IconSymbol
+                          size={28}
+                          name={"plus.circle"}
+                          color="black"
+                        />
+                      </TouchableOpacity>
+                    )
+                  : undefined
+              }
             />
           ),
           headerBackTitleVisible: false,

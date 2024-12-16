@@ -26,7 +26,7 @@ async function uploadPhotos(
     console.log(formData);
 
     let response = await fetch(
-      `http://localhost:3000/upload-image/${asset.creationTime / 1000}`,
+      `http://localhost:3000/upload-image/${Math.floor(asset.creationTime / 1000)}`,
       {
         method: "POST",
         headers: {

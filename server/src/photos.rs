@@ -1,13 +1,27 @@
 use axum::{extract::Path, http::header, response::IntoResponse, Extension, Json};
+use serde::Serialize;
 use sqlx::SqlitePool;
 
-use crate::{auth::UserClaim, error::AppError};
+use crate::{auth::UserClaim, error::AppError, people::Person};
+
+#[derive(Serialize)]
+struct ImageBoundingBox {
+    person: Person,
+    bounding_box: [i64; 4],
+}
+
+#[derive(Serialize)]
+pub struct Photo {
+    id: i64,
+    url: String,
+    bounding_boxes: Vec<ImageBoundingBox>,
+}
 
 pub async fn get_photos_for_entry(
     Path(date): Path<String>,
     Extension(db): Extension<SqlitePool>,
     Extension(claims): Extension<UserClaim>,
-) -> Result<Json<Vec<String>>, AppError> {
+) -> Result<Json<Vec<Photo>>, AppError> {
     tracing::info!(
         "Getting photos for date {} (user={})",
         date,
@@ -28,12 +42,40 @@ pub async fn get_photos_for_entry(
     .fetch_all(&db)
     .await?;
 
-    Ok(Json(
-        photos
-            .iter()
-            .map(|photo| format!("/photo/{}", photo.id))
-            .collect::<Vec<_>>(),
-    ))
+    let mut photos = photos
+        .iter()
+        .map(|photo| Photo {
+            id: photo.id,
+            url: format!("/photo/{}", photo.id),
+            bounding_boxes: Vec::new(),
+        })
+        .collect::<Vec<_>>();
+
+    for photo in photos.iter_mut() {
+        let bounding_boxes = sqlx::query!(
+            r#"
+            SELECT person_id, description, name, x_min, y_min, x_max, y_max
+            FROM image_bounding_boxes INNER JOIN people ON person_id = people.id
+            WHERE image_id = ?
+            "#,
+            photo.id
+        )
+        .fetch_all(&db)
+        .await?;
+
+        photo
+            .bounding_boxes
+            .extend(bounding_boxes.into_iter().map(|bb| ImageBoundingBox {
+                person: Person {
+                    id: bb.person_id,
+                    name: bb.name,
+                    description: bb.description,
+                },
+                bounding_box: [bb.x_min, bb.y_min, bb.x_max, bb.y_max],
+            }));
+    }
+
+    Ok(Json(photos))
 }
 
 pub async fn get_photo(

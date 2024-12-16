@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { View, TextInput, TouchableOpacity, Alert } from "react-native";
 import { Button, Text, StyleSheet, Platform } from "react-native";
-import { Stack, useRouter } from "expo-router";
+import { Redirect, Stack, useRouter } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useStore } from "@/app/store";
 
@@ -41,6 +41,12 @@ export default function LoginPage() {
       Alert.alert("Error", "Login failed");
     }
   };
+
+  const loggedIn = useStore((s) => s.loggedIn);
+
+  if (loggedIn) {
+    return <Redirect href="/(home)/main" />;
+  }
 
   return (
     <>

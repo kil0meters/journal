@@ -14,12 +14,7 @@ function PersonEntries({ personId }: { personId: number }) {
     return <Text>loading...</Text>;
   }
 
-  return (
-    <Entries
-      navigationPrefix={`/(people)/person/${personId}/`}
-      entries={data}
-    />
-  );
+  return <Entries navigationPrefix={`/(home)/entry/`} entries={data} />;
 }
 
 export default function PersonPage() {
